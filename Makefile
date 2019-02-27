@@ -1,4 +1,4 @@
-obj-m += trial.o
+obj-m += usb.o
 # obj-m is a list of what kernel modules to build.  The .o and other
 # objects will be automatically built from the corresponding .c file -
 # no need to list the source files explicitly.

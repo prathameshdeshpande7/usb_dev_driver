@@ -70,7 +70,7 @@ static int pd_open(struct inode *inode, struct file *file)
 	interface = usb_find_interface(&pd_driver, subminor);
 	if(!interface)
 	{
-		err ("%s - error, can't find device for minor %d",__FUNCTION__, subminor);
+		printk ("%s - error, can't find device for minor %d",__FUNCTION__, subminor);
 		retval = -ENODEV;
 		goto exit;
 	}
@@ -167,11 +167,11 @@ static void pd_write_bulk_callback(struct urb *urb)
 		  urb->status == -ECONNRESET ||
 		  urb->status == -ESHUTDOWN))
 	{
-		err("%s - nonzero write bulk status received: %d",__FUNCTION__, urb->status);
+		printk("%s - nonzero write bulk status received: %d",__FUNCTION__, urb->status);
 	}
 	
 	/* free up our allocated buffer */
-	usb_buffer_free(urb->dev, urb->transfer_buffer_length,urb->transfer_buffer, urb->transfer_dma);
+	usb_free_coherent (urb->dev, urb->transfer_buffer_length,urb->transfer_buffer, urb->transfer_dma);
 	up(&dev->limit_sem);
 }
 
@@ -214,7 +214,7 @@ static ssize_t pd_write(struct file *file, const char __user *user_buffer, size_
 		goto error;
 	}
 
-	buf = usb_buffer_alloc(dev->udev, writesize, GFP_KERNEL, &urb->transfer_dma);
+	buf = usb_alloc_coherent(dev->udev, writesize, GFP_KERNEL, &urb->transfer_dma);
 	if (!buf)
 	{
 		retval = -ENOMEM;
@@ -236,7 +236,7 @@ static ssize_t pd_write(struct file *file, const char __user *user_buffer, size_
 	retval = usb_submit_urb(urb, GFP_KERNEL);
 	if(retval)
 	{
-		err("%s - failed submitting write urb, error %d",__FUNCTION__,retval);
+		printk("%s - failed submitting write urb, error %d",__FUNCTION__,retval);
 	goto error;
 	}
 
@@ -249,7 +249,7 @@ static ssize_t pd_write(struct file *file, const char __user *user_buffer, size_
 error:
 	if (urb)
 	{
-		usb_buffer_free(dev->udev, writesize, buf, urb->transfer_dma);
+		usb_free_coherent(dev->udev, writesize, buf, urb->transfer_dma);
 		usb_free_urb(urb);
 	}
 	mutex_unlock(&dev->io_mutex);
@@ -292,7 +292,7 @@ static int pd_probe(struct usb_interface *interface, const struct usb_device_id 
 	/* allocate memory for our device state and initialize it */
 	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
 	if (!dev) {
-		err("Out of memory");
+		printk("Out of memory");
 		goto error;
 	}
 
@@ -325,14 +325,14 @@ static int pd_probe(struct usb_interface *interface, const struct usb_device_id 
 			printk(KERN_ALERT "\nOK bulk in endpoint\n");
 			if (!dev->bulk_in_buffer)
 			 {
-				err("Could not allocate bulk_in_buffer");
+				printk("Could not allocate bulk_in_buffer");
 				goto error;
 			}
 			//printk(KERN_ALERT "OK2\n");
 			dev->bulk_in_urb = usb_alloc_urb(0, GFP_KERNEL);
 			if (!dev->bulk_in_urb) 
 			{
-				err("Could not allocate bulk_in_urb");
+				printk("Could not allocate bulk_in_urb");
 				goto error;
 			}
 			//printk(KERN_ALERT "OK3\n");
@@ -354,7 +354,7 @@ static int pd_probe(struct usb_interface *interface, const struct usb_device_id 
 	if (!(dev->bulk_in_endpointAddr && dev->bulk_out_endpointAddr)) 
 	{
 		printk(KERN_ALERT "\nTHIS IS THE POINT OF ERROR\n");
-		err("Could not find both bulk-in and bulk-out endpoints");
+		printk("Could not find both bulk-in and bulk-out endpoints");
 		goto error;
 	}
 
@@ -365,7 +365,7 @@ static int pd_probe(struct usb_interface *interface, const struct usb_device_id 
 	retval = usb_register_dev(interface, &pd_class);
 	if (retval) {
 		/* something prevented us from registering this driver */
-		err("Not able to get a minor for this device.");
+		printk("Not able to get a minor for this device.");
 		usb_set_intfdata(interface, NULL);
 		goto error;
 	}
@@ -427,7 +427,7 @@ static int __init usb_pd_init(void)
      /* register this driver with the USB subsystem */
     result = usb_register(&pd_driver);
     if (result)
-        err("usb_register failed. Error number %d", result);
+        printk("usb_register failed. Error number %d", result);
      return result;
 }
 
